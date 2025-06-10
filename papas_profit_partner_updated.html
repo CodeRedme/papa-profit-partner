@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Papa's Profit Partner 💸</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fff0f5;
+      color: #333;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #ff69b4;
+    }
+    .stock-box {
+      margin: 20px auto;
+      background: #ffe4e1;
+      padding: 20px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #ffb6c1;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #ff69b4;
+    }
+    canvas {
+      margin-top: 20px;
+      background: #fff;
+      border-radius: 10px;
+    }
+    input {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin: 5px;
+    }
+    footer {
+      margin-top: 50px;
+      font-style: italic;
+      color: #555;
+    }
+    ul {
+      text-align: left;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📈 Papa’s Profit Partner 💖</h1>
+  <p>Type your stock symbol (like <b>TCS.NS</b>, <b>ZOMATO.NS</b>):</p>
+  <input type="text" id="stockInput" placeholder="e.g. ZOMATO.NS" />
+  <button onclick="fetchPrice()">🔍 Analyze</button>
+
+  <div class="stock-box" id="resultBox" style="display: none;">
+    <h2 id="stockName"></h2>
+    <p id="stockPrice"></p>
+    <p id="aiAdvice"></p>
+
+    <label for="alertPrice">🔔 Set Alert Price:</label>
+    <input type="number" id="alertPrice" placeholder="Enter ₹ target">
+    <button onclick="setAlert()">Save Alert</button>
+    <p id="alertMsg" style="color: green;"></p>
+
+    <canvas id="stockChart" width="400" height="200"></canvas>
+
+    <h3>📰 Latest News</h3>
+    <ul id="stockNews">
+      <li>Fetching news...</li>
+    </ul>
+  </div>
+
+  <div class="stock-box">
+    <h2>🔥 Today's Top Movers</h2>
+    <ul id="topMovers">
+      <li>Loading top gainers/losers...</li>
+    </ul>
+  </div>
+
+  <footer>
+    <p>“For the one who taught me value, not just valuation.”</p>
+    <p>Made with 💖 by Tulika Soni (Daughter of Rajeev Kumar)</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    async function fetchPrice() {
+      const stock = document.getElementById('stockInput').value.trim();
+      if (!stock) return alert("Please enter a stock symbol!");
+
+      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${stock}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const meta = data.chart.result[0].meta;
+        const timestamps = data.chart.result[0].timestamp;
+        const prices = data.chart.result[0].indicators.adjclose[0].adjclose;
+
+        const price = meta.regularMarketPrice;
+
+        document.getElementById('stockName').innerText = `📊 ${stock.toUpperCase()}`;
+        document.getElementById('stockPrice').innerText = `💰 Current Price: ₹${price}`;
+
+        let advice = "";
+        if (price < 100) advice = "👀 bbg, this might be your dip buying moment!";
+        else if (price > 500) advice = "🔥 looking hot, don’t get FOMO’d!";
+        else advice = "✨ keep your eye on the chart... it’s mid but maybe magic!";
+
+        document.getElementById('aiAdvice').innerText = advice;
+        document.getElementById('resultBox').style.display = 'block';
+        checkAlert(stock, price);
+        fetchNews(stock);
+
+        const ctx = document.getElementById('stockChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: timestamps.map(t => new Date(t * 1000).toLocaleDateString()),
+            datasets: [{
+              label: 'Price ₹',
+              data: prices,
+              borderColor: '#ff69b4',
+              backgroundColor: 'rgba(255,182,193,0.2)',
+              borderWidth: 2,
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: false
+              }
+            }
+          }
+        });
+
+      } catch (err) {
+        alert("Couldn’t fetch stock data. Check the symbol or try again later!");
+      }
+    }
+
+    function setAlert() {
+      const symbol = document.getElementById("stockInput").value.toUpperCase();
+      const price = document.getElementById("alertPrice").value;
+      if (!symbol || !price) return alert("Please enter symbol and alert price!");
+      localStorage.setItem(`alert-${symbol}`, price);
+      document.getElementById("alertMsg").textContent = `📢 Alert set at ₹${price}`;
+    }
+
+    function checkAlert(symbol, price) {
+      const alertPrice = localStorage.getItem(`alert-${symbol.toUpperCase()}`);
+      if (alertPrice && parseFloat(price) >= parseFloat(alertPrice)) {
+        alert(`📢 ${symbol.toUpperCase()} has hit your alert price of ₹${alertPrice}!`);
+      }
+    }
+
+    async function fetchNews(symbol) {
+      const company = symbol.split('.')[0];
+      const newsList = document.getElementById("stockNews");
+      try {
+        const response = await fetch(`https://newsapi.org/v2/everything?q=${company}&sortBy=publishedAt&pageSize=3&apiKey=YOUR_API_KEY`);
+        const data = await response.json();
+        newsList.innerHTML = "";
+        data.articles.forEach(article => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="${article.url}" target="_blank">${article.title}</a>`;
+          newsList.appendChild(li);
+        });
+      } catch (e) {
+        newsList.innerHTML = "<li>News unavailable.</li>";
+      }
+    }
+
+    function showTopMovers() {
+      const mockTopMovers = [
+        { symbol: "TATAMOTORS.NS", change: "+3.5%" },
+        { symbol: "ADANIGREEN.NS", change: "-2.1%" },
+        { symbol: "HINDUNILVR.NS", change: "+2.7%" },
+        { symbol: "BAJAJFINSV.NS", change: "+1.9%" },
+        { symbol: "ITC.NS", change: "-1.2%" },
+      ];
+      const list = document.getElementById('topMovers');
+      list.innerHTML = "";
+      mockTopMovers.forEach(stock => {
+        const li = document.createElement("li");
+        li.textContent = `${stock.symbol} — ${stock.change}`;
+        list.appendChild(li);
+      });
+    }
+
+    showTopMovers();
+  </script>
+</body>
+</html>
