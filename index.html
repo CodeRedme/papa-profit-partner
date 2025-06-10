@@ -104,7 +104,7 @@
       const stock = document.getElementById('stockInput').value.trim();
       if (!stock) return alert("Please enter a stock symbol!");
 
-      const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${stock}`;
+      const url = `https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v8/finance/chart/${stock}`;
       try {
         const response = await fetch(url);
         const data = await response.json();
