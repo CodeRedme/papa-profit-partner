@@ -104,18 +104,71 @@
       const stock = document.getElementById('stockInput').value.trim();
       if (!stock) return alert("Please enter a stock symbol!");
 
-      const url = `https://api.allorigins.win/raw?url=https://query1.finance.yahoo.com/v8/finance/chart/${stock}`;
+      const url = `https://api.twelvedata.com/time_series?symbol=${stock}&interval=1day&outputsize=30&apikey=9ff4e12aea3d43538a59b4b3f5812c79`;
       try {
-        const response = await fetch(url);
-        const data = await response.json();
-        const meta = data.chart.result[0].meta;
-        const timestamps = data.chart.result[0].timestamp;
-        const prices = data.chart.result[0].indicators.adjclose[0].adjclose;
+        async function fetchPrice() {
+  const stock = document.getElementById('stockInput').value.trim();
+  if (!stock) return alert("Please enter a stock symbol!");
 
-        const price = meta.regularMarketPrice;
+  // ✅ Replace with your real API key from TwelveData
+  const apiKey = "YOUR_API_KEY_HERE";
+  const url = `https://api.twelvedata.com/time_series?symbol=${stock}&interval=1day&outputsize=30&apikey=${apiKey}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
 
-        document.getElementById('stockName').innerText = `📊 ${stock.toUpperCase()}`;
-        document.getElementById('stockPrice').innerText = `💰 Current Price: ₹${price}`;
+    if (data.status === "error") {
+      alert("Error: " + data.message);
+      return;
+    }
+
+    const price = data.values[0].close;
+    const timestamps = data.values.map(item => item.datetime).reverse();
+    const prices = data.values.map(item => parseFloat(item.close)).reverse();
+
+    document.getElementById('stockName').innerText = `📊 ${stock.toUpperCase()}`;
+    document.getElementById('stockPrice').innerText = `💰 Current Price: ₹${price}`;
+
+    // Cute AI advice
+    let advice = "";
+    if (price < 100) advice = "👀 bbg, this might be your dip buying moment!";
+    else if (price > 500) advice = "🔥 looking hot, don’t get FOMO’d!";
+    else advice = "✨ keep your eye on the chart... it’s mid but maybe magic!";
+    document.getElementById('aiAdvice').innerText = advice;
+    document.getElementById('resultBox').style.display = 'block';
+
+    const ctx = document.getElementById('stockChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timestamps,
+        datasets: [{
+          label: 'Price ₹',
+          data: prices,
+          borderColor: '#ff69b4',
+          backgroundColor: 'rgba(255,182,193,0.2)',
+          borderWidth: 2,
+          tension: 0.3,
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+
+    checkAlert(stock, price);
+    fetchNews(stock);
+
+  } catch (err) {
+    alert("Couldn’t fetch stock data. Try again later.");
+  }
+}
+
 
         let advice = "";
         if (price < 100) advice = "👀 bbg, this might be your dip buying moment!";
