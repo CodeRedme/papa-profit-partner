@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Papa's Profit Partner 💸</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -34,10 +35,11 @@
       color: white;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: background 0.3s ease;
+      transition: background 0.3s ease, transform 0.2s ease;
     }
     button:hover {
       background: #ff69b4;
+      transform: scale(1.05);
     }
     canvas {
       margin-top: 20px;
@@ -59,6 +61,13 @@
       text-align: left;
       padding-left: 20px;
     }
+    a {
+      color: #d63384;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -66,7 +75,7 @@
   <h1>📈 Papa’s Profit Partner 💖</h1>
   <p>Type your stock symbol (like <b>TCS.NS</b>, <b>ZOMATO.NS</b>):</p>
   <input type="text" id="stockInput" placeholder="e.g. ZOMATO.NS" />
-  <button onclick="fetchPrice()">🔍 Analyze</button>
+  <button onclick="fetchStock()">🔍 Analyze</button>
 
   <div class="stock-box" id="resultBox" style="display: none;">
     <h2 id="stockName"></h2>
@@ -94,171 +103,101 @@
   </div>
 
   <footer>
-    <p>“For the one who taught me value, not just valuation.”</p>
     <p>Made with 💖 by Tulika Soni (Daughter of Rajeev Kumar)</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    async function fetchPrice() {
-      const stock = document.getElementById('stockInput').value.trim();
-      if (!stock) return alert("Please enter a stock symbol!");
+    async function fetchStock() {
+      const symbol = document.getElementById("stockInput").value.toUpperCase().trim();
+      if (!symbol) return alert("Enter a stock symbol!");
 
-      const url = `https://api.twelvedata.com/time_series?symbol=${stock}&interval=1day&outputsize=30&apikey=9ff4e12aea3d43538a59b4b3f5812c79`;
       try {
-        async function fetchPrice() {
-  const stock = document.getElementById('stockInput').value.trim();
-  if (!stock) return alert("Please enter a stock symbol!");
-
-  // ✅ Replace with your real API key from TwelveData
-  const apiKey = "YOUR_API_KEY_HERE";
-  const url = `https://api.twelvedata.com/time_series?symbol=${stock}&interval=1day&outputsize=30&apikey=${apiKey}`;
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status === "error") {
-      alert("Error: " + data.message);
-      return;
-    }
-
-    const price = data.values[0].close;
-    const timestamps = data.values.map(item => item.datetime).reverse();
-    const prices = data.values.map(item => parseFloat(item.close)).reverse();
-
-    document.getElementById('stockName').innerText = `📊 ${stock.toUpperCase()}`;
-    document.getElementById('stockPrice').innerText = `💰 Current Price: ₹${price}`;
-
-    // Cute AI advice
-    let advice = "";
-    if (price < 100) advice = "👀 bbg, this might be your dip buying moment!";
-    else if (price > 500) advice = "🔥 looking hot, don’t get FOMO’d!";
-    else advice = "✨ keep your eye on the chart... it’s mid but maybe magic!";
-    document.getElementById('aiAdvice').innerText = advice;
-    document.getElementById('resultBox').style.display = 'block';
-
-    const ctx = document.getElementById('stockChart').getContext('2d');
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: timestamps,
-        datasets: [{
-          label: 'Price ₹',
-          data: prices,
-          borderColor: '#ff69b4',
-          backgroundColor: 'rgba(255,182,193,0.2)',
-          borderWidth: 2,
-          tension: 0.3,
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: false
-          }
-        }
-      }
-    });
-
-    checkAlert(stock, price);
-    fetchNews(stock);
-
-  } catch (err) {
-    alert("Couldn’t fetch stock data. Try again later.");
-  }
-}
-
+        const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbol}&apikey=9ff4e12aea3d43538a59b4b3f5812c79`);
+        const priceData = await priceRes.json();
+        const price = parseFloat(priceData.price);
+        document.getElementById("stockPrice").textContent = `💰 Current Price: ₹${price}`;
+        document.getElementById("stockName").textContent = `📊 ${symbol}`;
+        document.getElementById("resultBox").style.display = "block";
 
         let advice = "";
         if (price < 100) advice = "👀 bbg, this might be your dip buying moment!";
         else if (price > 500) advice = "🔥 looking hot, don’t get FOMO’d!";
         else advice = "✨ keep your eye on the chart... it’s mid but maybe magic!";
+        document.getElementById("aiAdvice").textContent = advice;
 
-        document.getElementById('aiAdvice').innerText = advice;
-        document.getElementById('resultBox').style.display = 'block';
-        checkAlert(stock, price);
-        fetchNews(stock);
+        checkAlert(symbol, price);
 
-        const ctx = document.getElementById('stockChart').getContext('2d');
+        // chart
+        const chartRes = await fetch(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=30&apikey=9ff4e12aea3d43538a59b4b3f5812c79`);
+        const chartData = await chartRes.json();
+        const timeSeries = chartData.values.reverse();
+
+        const ctx = document.getElementById("stockChart").getContext("2d");
         new Chart(ctx, {
-          type: 'line',
+          type: "line",
           data: {
-            labels: timestamps.map(t => new Date(t * 1000).toLocaleDateString()),
+            labels: timeSeries.map(p => p.datetime),
             datasets: [{
-              label: 'Price ₹',
-              data: prices,
-              borderColor: '#ff69b4',
-              backgroundColor: 'rgba(255,182,193,0.2)',
-              borderWidth: 2,
+              label: "Price ₹",
+              data: timeSeries.map(p => parseFloat(p.close)),
+              borderColor: "#ff69b4",
+              backgroundColor: "rgba(255,182,193,0.2)",
               tension: 0.3,
             }]
-          },
-          options: {
-            responsive: true,
-            scales: {
-              y: {
-                beginAtZero: false
-              }
-            }
           }
         });
 
+        // news
+        const newsBox = document.getElementById("stockNews");
+        const company = symbol.split('.')[0];
+        newsBox.innerHTML = "<li>Loading...</li>";
+        const newsRes = await fetch(`https://newsapi.org/v2/everything?q=${company}&sortBy=publishedAt&apiKey=a3a43ca330a6447a845e74d4eb820d21`);
+        const newsJson = await newsRes.json();
+        newsBox.innerHTML = "";
+        newsJson.articles.slice(0, 3).forEach(article => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="${article.url}" target="_blank">${article.title}</a>`;
+          newsBox.appendChild(li);
+        });
+
       } catch (err) {
-        alert("Couldn’t fetch stock data. Check the symbol or try again later!");
+        alert("Could not fetch stock data.");
       }
     }
 
     function setAlert() {
       const symbol = document.getElementById("stockInput").value.toUpperCase();
       const price = document.getElementById("alertPrice").value;
-      if (!symbol || !price) return alert("Please enter symbol and alert price!");
+      if (!symbol || !price) return alert("Enter symbol and alert price!");
       localStorage.setItem(`alert-${symbol}`, price);
       document.getElementById("alertMsg").textContent = `📢 Alert set at ₹${price}`;
     }
 
     function checkAlert(symbol, price) {
-      const alertPrice = localStorage.getItem(`alert-${symbol.toUpperCase()}`);
+      const alertPrice = localStorage.getItem(`alert-${symbol}`);
       if (alertPrice && parseFloat(price) >= parseFloat(alertPrice)) {
-        alert(`📢 ${symbol.toUpperCase()} has hit your alert price of ₹${alertPrice}!`);
-      }
-    }
-
-    async function fetchNews(symbol) {
-      const company = symbol.split('.')[0];
-      const newsList = document.getElementById("stockNews");
-      try {
-        const response = await fetch(`https://newsapi.org/v2/everything?q=${company}&sortBy=publishedAt&pageSize=3&apiKey=YOUR_API_KEY`);
-        const data = await response.json();
-        newsList.innerHTML = "";
-        data.articles.forEach(article => {
-          const li = document.createElement("li");
-          li.innerHTML = `<a href="${article.url}" target="_blank">${article.title}</a>`;
-          newsList.appendChild(li);
-        });
-      } catch (e) {
-        newsList.innerHTML = "<li>News unavailable.</li>";
+        alert(`📢 ${symbol} hit your alert price of ₹${alertPrice}`);
       }
     }
 
     function showTopMovers() {
-      const mockTopMovers = [
+      const movers = [
         { symbol: "TATAMOTORS.NS", change: "+3.5%" },
-        { symbol: "ADANIGREEN.NS", change: "-2.1%" },
-        { symbol: "HINDUNILVR.NS", change: "+2.7%" },
+        { symbol: "ZOMATO.NS", change: "-2.1%" },
+        { symbol: "ITC.NS", change: "+2.2%" },
         { symbol: "BAJAJFINSV.NS", change: "+1.9%" },
-        { symbol: "ITC.NS", change: "-1.2%" },
       ];
-      const list = document.getElementById('topMovers');
+      const list = document.getElementById("topMovers");
       list.innerHTML = "";
-      mockTopMovers.forEach(stock => {
+      movers.forEach(m => {
         const li = document.createElement("li");
-        li.textContent = `${stock.symbol} — ${stock.change}`;
+        li.textContent = `${m.symbol} — ${m.change}`;
         list.appendChild(li);
       });
     }
 
     showTopMovers();
   </script>
+
 </body>
 </html>
